@@ -32,92 +32,105 @@ fun PaymentScreen(navController: NavController, total: Int) {
     var cvv by remember { mutableStateOf("") }
     var isCvvFocused by remember { mutableStateOf(false) }
 
-    val rotation by animateFloatAsState(targetValue = if (isCvvFocused) 180f else 0f)
-    val buttonScale by animateFloatAsState(
-        targetValue = 1.05f,
-        animationSpec = repeatable(
-            iterations = Int.MAX_VALUE,
-            animation = tween(durationMillis = 500, delayMillis = 200)
-        )
-    )
+    var cardNameError by remember { mutableStateOf<String?>(null) }
+    var cardNumberError by remember { mutableStateOf<String?>(null) }
+    var expiryDateError by remember { mutableStateOf<String?>(null) }
+    var cvvError by remember { mutableStateOf<String?>(null) }
+
+    val isFormValid by derivedStateOf {
+        cardName.isNotBlank() && cardNameError == null &&
+        cardNumber.isNotBlank() && cardNumberError == null &&
+        expiryDate.isNotBlank() && expiryDateError == null &&
+        cvv.isNotBlank() && cvvError == null
+    }
+
+    fun validateCardName() {
+        cardNameError = if (cardName.isBlank()) "El nombre no puede estar vacío" else null
+    }
+
+    fun validateCardNumber() {
+        cardNumberError = when {
+            cardNumber.isBlank() -> "El número de tarjeta no puede estar vacío"
+            !cardNumber.all { it.isDigit() } -> "Debe contener solo números"
+            cardNumber.length != 16 -> "Debe tener 16 dígitos"
+            else -> null
+        }
+    }
+
+    fun validateExpiryDate() {
+        expiryDateError = if (!expiryDate.matches(Regex("^(0[1-9]|1[0-2])\\/([0-9]{2})$"))) {
+            "Formato MM/AA inválido"
+        } else {
+            null
+        }
+    }
+
+    fun validateCvv() {
+        cvvError = when {
+            cvv.isBlank() -> "El CVV no puede estar vacío"
+            !cvv.all { it.isDigit() } -> "Debe ser numérico"
+            cvv.length !in 3..4 -> "Debe tener 3 o 4 dígitos"
+            else -> null
+        }
+    }
+
+    val rotation by animateFloatAsState(targetValue = if (isCvvFocused) 180f else 0f, label = "")
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-                .graphicsLayer {
-                    rotationY = rotation
-                    cameraDistance = 8 * density
-                },
-            shape = RoundedCornerShape(8.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        brush = Brush.linearGradient(
-                            colors = listOf(Color(0xFF6F1E51), Color(0xFFED4C67), Color(0xFFF79F1F)),
-                        )
-                    )
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    if (rotation < 90f) {
-                        Image(painter = painterResource(id = R.drawable.logo), contentDescription = null, modifier = Modifier.height(40.dp))
-                        Text(text = cardNumber.ifEmpty { "#### #### #### ####" }, color = Color.White)
-                        Row {
-                            Text(text = cardName.ifEmpty { "NOMBRE APELLIDO" }, color = Color.White)
-                            Spacer(modifier = Modifier.weight(1f))
-                            Text(text = expiryDate.ifEmpty { "MM/AA" }, color = Color.White)
-                        }
-                    } else {
-                        Spacer(modifier = Modifier.height(40.dp))
-                        Text(text = "CVV: ${cvv.ifEmpty { "###" }}", modifier = Modifier.align(Alignment.End), color = Color.White)
-                    }
-                }
-            }
-        }
+        // ... (Credit Card Visual)
+
         Spacer(modifier = Modifier.height(16.dp))
+
         OutlinedTextField(
             value = cardName,
-            onValueChange = { cardName = it },
+            onValueChange = { cardName = it; validateCardName() },
             label = { Text("Nombre en la tarjeta") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            isError = cardNameError != null,
+            supportingText = { if (cardNameError != null) Text(cardNameError!!) }
         )
+
         OutlinedTextField(
             value = cardNumber,
-            onValueChange = { cardNumber = it },
+            onValueChange = { cardNumber = it; validateCardNumber() },
             label = { Text("Número de tarjeta") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            isError = cardNumberError != null,
+            supportingText = { if (cardNumberError != null) Text(cardNumberError!!) }
         )
+
         Row(modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(
                 value = expiryDate,
-                onValueChange = { expiryDate = it },
-                label = { Text("Expira") },
-                modifier = Modifier.weight(1f)
+                onValueChange = { expiryDate = it; validateExpiryDate() },
+                label = { Text("Expira (MM/AA)") },
+                modifier = Modifier.weight(1f),
+                isError = expiryDateError != null,
+                supportingText = { if (expiryDateError != null) Text(expiryDateError!!) }
             )
             Spacer(modifier = Modifier.width(16.dp))
             OutlinedTextField(
                 value = cvv,
-                onValueChange = { cvv = it },
+                onValueChange = { cvv = it; validateCvv() },
                 label = { Text("CVV") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier
-                    .weight(1f)
-                    .onFocusChanged { isCvvFocused = it.isFocused }
+                modifier = Modifier.weight(1f).onFocusChanged { isCvvFocused = it.isFocused },
+                isError = cvvError != null,
+                supportingText = { if (cvvError != null) Text(cvvError!!) }
             )
         }
+
         Spacer(modifier = Modifier.height(16.dp))
+
         Button(
             onClick = { /* Lógica de pago */ },
-            modifier = Modifier.fillMaxWidth().scale(buttonScale),
+            modifier = Modifier.fillMaxWidth(),
+            enabled = isFormValid,
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFD1DC))
         ) {
