@@ -10,6 +10,12 @@ import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Fastfood
+import androidx.compose.material.icons.filled.Grass
+import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.LunchDining
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +40,113 @@ fun DrawerMenu(
         }
     ) { inner ->
         LazyColumn(
+    username:String,
+    navController: NavController
+) { // inicio
+    Column(modifier = Modifier.fillMaxSize())
+    { // inicio columna
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp)
+                .background(MaterialTheme.colorScheme.primary)
+        ) // fin box
+
+        { // inicio contenido
+            Text(
+                text="Categorias user: $username" ,
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+            )// fin texto
+        }// fin contenido
+
+        //  Items
+
+
+        //LazyColumn: Crea una lista de elementos que se pueden desplazar verticalmente.
+        // Solo los elementos que están visibles en la pantalla se crean y se muestran,
+        // lo que mejora el rendimiento, especialmente para listas grandes.
+
+        LazyColumn( modifier = Modifier.weight(1f)) {
+            item{ // inicio item 1
+                NavigationDrawerItem( // inicio DrawerItem
+                    label = {Text("Hamburgesa Clasica")},
+                    selected =false,
+                    onClick = {
+                        val nombre = Uri.encode("Hamburgesa Clasica")
+                        val precio ="5000"
+                        navController.navigate("ProductoFormScreen/$nombre/$precio")
+                    }, // fin onclick
+                    icon = {Icon(Icons.Default.Fastfood ,  contentDescription ="Clasica" )}
+
+                ) // fin DrawerItem
+            } // fin item 1
+
+
+            item{ // inicio item 2
+                NavigationDrawerItem( // inicio DrawerItem
+                    label = {Text("Hamburgesa BBQ")},
+                    selected =false,
+                    onClick = { /*  accion */
+                    }, // fin onclick
+                    icon = {Icon(Icons.Default.LunchDining ,  contentDescription ="BBQ" )}
+
+                ) // fin DrawerItem
+            } // fin item 2
+
+
+            item{ // inicio item 3
+                NavigationDrawerItem( // inicio DrawerItem
+                    label = {Text("Hamburgesa Veggie")},
+                    selected =false,
+                    onClick = { /*  accion */
+                    }, // fin onclick
+                    icon = {Icon(Icons.Default.Grass ,  contentDescription ="Veggie" )}
+
+                ) // fin DrawerItem
+            } // fin item 3
+
+            item{ // inicio item 4
+                NavigationDrawerItem( // inicio DrawerItem
+                    label = {Text("Hamburgesa Picante")},
+                    selected =false,
+                    onClick = { /*  accion */
+                    }, // fin onclick
+                    icon = {Icon(Icons.Default.LocalFireDepartment ,  contentDescription ="Picante" )}
+
+                ) // fin DrawerItem
+            } // fin item 4
+
+            item{ // inicio item 5
+                NavigationDrawerItem( // inicio DrawerItem
+                    label = {Text("Hamburgesa Doble")},
+                    selected =false,
+                    onClick = { /*  accion */
+                    }, // fin onclick
+                    icon = {Icon(Icons.Default.Star ,  contentDescription ="Doble" )}
+
+                ) // fin DrawerItem
+            } // fin item 5
+
+            item {
+                NavigationDrawerItem(
+                    label = { Text("Contáctanos") },
+                    selected = false,
+                    onClick = { navController.navigate("contactanos") },
+                    icon = { Icon(Icons.Default.Email, contentDescription = "Contáctanos") }
+                )
+            }
+
+
+        } // fin Lazy
+
+//  Footer del drawer
+        Text(
+            text ="@ 2025 Burger App",
+            style = MaterialTheme.typography.bodySmall,
+
             modifier = Modifier
                 .padding(inner)
                 .fillMaxSize()
