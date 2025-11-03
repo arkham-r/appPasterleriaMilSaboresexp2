@@ -4,21 +4,22 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.proyectologin005d.data.model.User
 import com.example.proyectologin005d.data.repository.AuthRepository
 import kotlinx.coroutines.launch
 
 @Composable
 fun RegisterScreen(
-    navController: NavController,
-    repo: AuthRepository
+    navController: NavController
 ) {
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val authRepository = remember { AuthRepository(context) }
     var nombre by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
+    var apellido by remember { mutableStateOf("") }
+    var correo by remember { mutableStateOf("") }
+    var contrasena by remember { mutableStateOf("") }
     var msg by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
 
@@ -33,21 +34,19 @@ fun RegisterScreen(
         Text("Registrar nuevo usuario", style = MaterialTheme.typography.titleLarge)
 
         OutlinedTextField(value = nombre, onValueChange = { nombre = it }, label = { Text("Nombre") })
-        OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Usuario") })
-        OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Contraseña") })
-        OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") })
+        OutlinedTextField(value = apellido, onValueChange = { apellido = it }, label = { Text("Apellido") })
+        OutlinedTextField(value = correo, onValueChange = { correo = it }, label = { Text("Correo") })
+        OutlinedTextField(value = contrasena, onValueChange = { contrasena = it }, label = { Text("Contraseña") })
 
         Button(
             onClick = {
                 scope.launch {
                     loading = true
-                    val ok = repo.register(
-                        User(username = username.trim(), password = password, nombre = nombre, email = email)
-                    )
+                    val ok = authRepository.register(nombre, apellido, correo, contrasena)
                     loading = false
                     if (ok) {
                         // tras registrarse, auto-login y navega igual que login
-                        navController.navigate("DrawerMenu/$username") {
+                        navController.navigate("index") {
                             popUpTo("login") { inclusive = true }
                             launchSingleTop = true
                         }

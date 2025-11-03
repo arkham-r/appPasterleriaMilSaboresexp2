@@ -15,7 +15,7 @@ data class CatalogoProductoJson(
 )
 
 object JsonReader {
-    fun cargarCatalogo(context: Context, file: String = "Pasteles.json"): List<CatalogoProductoJson> {
+    fun cargarCatalogo(context: Context, file: String = "database/Pasteles.json"): List<CatalogoProductoJson> {
         context.assets.open(file).use { input ->
             InputStreamReader(input).use { reader ->
                 val type = object : TypeToken<List<CatalogoProductoJson>>() {}.type

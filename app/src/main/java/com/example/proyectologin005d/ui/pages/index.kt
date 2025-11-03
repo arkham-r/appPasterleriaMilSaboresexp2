@@ -1,5 +1,7 @@
 package com.example.proyectologin005d.ui.pages
 
+import android.content.Context
+import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -8,21 +10,30 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import coil.compose.rememberAsyncImagePainter
 import com.example.proyectologin005d.R
+import com.example.proyectologin005d.data.Pastel
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
+import java.io.IOException
 
 @Composable
 fun IndexScreen(navController: NavController) {
+    val context = LocalContext.current
+    val pasteles = remember { loadPasteles(context) }
     val scroll = rememberScrollState()
 
     Column(
@@ -87,26 +98,14 @@ fun IndexScreen(navController: NavController) {
             modifier = Modifier.padding(bottom = 12.dp)
         )
 
-        ProductCard(
-            image = R.drawable.torta_cuadrada_de_chocolate,
-            nombre = "Torta de Chocolate",
-            precio = "$45.000",
-            descripcion = "Bizcocho esponjoso con ganache artesanal y un toque de avellanas."
-        )
-
-        ProductCard(
-            image = R.drawable.torta_circular_de_frutas,
-            nombre = "Torta de Frutas",
-            precio = "$50.000",
-            descripcion = "Fresca mezcla de frutas con crema chantilly natural."
-        )
-
-        ProductCard(
-            image = R.drawable.brownie_sin_gluten,
-            nombre = "Brownie Sin Gluten",
-            precio = "$32.000",
-            descripcion = "Delicioso brownie húmedo con cacao puro y sin harina refinada."
-        )
+        pasteles.take(4).forEach { pastel ->
+            ProductCard(
+                image = pastel.imagen,
+                nombre = pastel.nombre,
+                precio = "$${pastel.precio}",
+                descripcion = pastel.descripcion
+            )
+        }
 
         HorizontalDivider(
             color = Color(0xFFE0E0E0),
@@ -125,7 +124,7 @@ fun IndexScreen(navController: NavController) {
 }
 
 @Composable
-fun ProductCard(image: Int, nombre: String, precio: String, descripcion: String) {
+fun ProductCard(image: String, nombre: String, precio: String, descripcion: String) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -138,7 +137,7 @@ fun ProductCard(image: Int, nombre: String, precio: String, descripcion: String)
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
-                painter = painterResource(id = image),
+                painter = rememberAsyncImagePainter(model = "file:///android_asset/img/" + Uri.encode(image)),
                 contentDescription = nombre,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -168,4 +167,15 @@ fun ProductCard(image: Int, nombre: String, precio: String, descripcion: String)
             )
         }
     }
+}
+
+fun loadPasteles(context: Context): List<Pastel> {
+    val jsonString: String
+    try {
+        jsonString = context.assets.open("database/Pasteles.json").bufferedReader().use { it.readText() }
+    } catch (ioException: IOException) {
+        ioException.printStackTrace()
+        return emptyList()
+    }
+    return Json { ignoreUnknownKeys = true }.decodeFromString(jsonString)
 }

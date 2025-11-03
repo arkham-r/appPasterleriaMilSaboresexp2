@@ -1,37 +1,108 @@
 package com.example.proyectologin005d.data.repository
 
 import android.content.Context
-import com.example.proyectologin005d.data.database.ProductoDataBase
-import com.example.proyectologin005d.data.database.SessionDataStore
+import com.example.proyectologin005d.data.SessionDataStore
 import com.example.proyectologin005d.data.model.User
 import kotlinx.coroutines.flow.first
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import java.io.File
+import java.io.IOException
 
-class AuthRepository(context: Context) {
+class AuthRepository(private val context: Context) {
 
-    private val db = ProductoDataBase.getDatabase(context)
-    private val userDao = db.userDao()
     private val session = SessionDataStore(context)
+    private val usersFile by lazy {
+        val databaseDir = File(context.filesDir, "database")
+        if (!databaseDir.exists()) {
+            databaseDir.mkdirs()
+        }
+        File(databaseDir, "Usuarios.json")
+    }
 
-    /** Registra un usuario nuevo. Devuelve true si se registró, false si el username existe. */
-    suspend fun register(user: User): Boolean {
-        val exists = userDao.findByUsername(user.username)
-        if (exists != null) return false
-        userDao.insertUser(user)
-        // Auto-login tras registrar
-        session.saveUser(user.username)
+    private val json = Json {
+        prettyPrint = true
+        isLenient = true
+        ignoreUnknownKeys = true
+    }
+
+    init {
+        initializeUsersFile()
+    }
+
+    private fun initializeUsersFile() {
+        if (!usersFile.exists()) {
+            try {
+                context.assets.open("database/Usuarios.json").use { inputStream ->
+                    usersFile.outputStream().use { outputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
+            } catch (e: IOException) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private fun readUsers(): MutableList<User> {
+        return if (usersFile.exists() && usersFile.readText().isNotBlank()) {
+            try {
+                json.decodeFromString<MutableList<User>>(usersFile.readText())
+            } catch (e: Exception) {
+                e.printStackTrace()
+                mutableListOf()
+            }
+        } else {
+            mutableListOf()
+        }
+    }
+
+    private fun writeUsers(users: List<User>) {
+        try {
+            usersFile.writeText(json.encodeToString(users))
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+    }
+
+    suspend fun register(nombre: String, apellido: String, correo: String, contrasena: String): Boolean {
+        val users = readUsers()
+        if (users.any { it.correo.equals(correo, ignoreCase = true) }) {
+            return false
+        }
+        val newId = (users.maxOfOrNull { it.id } ?: 0) + 1
+        val newUser = User(
+            id = newId,
+            nombre = nombre,
+            apellido = apellido,
+            correo = correo,
+            contrasena = contrasena,
+            role = "user"
+        )
+        users.add(newUser)
+        writeUsers(users)
+        session.saveUser(newUser.correo)
         return true
     }
 
-    /** Inicia sesión. Devuelve true si las credenciales son válidas. */
-    suspend fun login(username: String, password: String): Boolean {
-        val u = userDao.login(username, password) ?: return false
-        session.saveUser(u.username)
-        return true
+    suspend fun login(correo: String, contrasena: String): Boolean {
+        val users = readUsers()
+        val user = users.find { it.correo.equals(correo, ignoreCase = true) && it.contrasena == contrasena }
+        return if (user != null) {
+            session.saveUser(user.correo)
+            true
+        } else {
+            false
+        }
     }
 
-    /** Obtiene el usuario en sesión (username) o null si no hay sesión. */
     suspend fun getSessionUsername(): String? = session.currentUser.first()
 
-    /** Limpia la sesión local. */
+    fun getUserByUsername(correo: String): User? {
+        val users = readUsers()
+        return users.find { it.correo.equals(correo, ignoreCase = true) }
+    }
+
     suspend fun logout() = session.clearUser()
 }

@@ -1,13 +1,15 @@
 package com.example.proyectologin005d.data.model
 
-import androidx.room.Entity
-import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
-@Entity(tableName = "users")
+@Serializable
 data class User(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val username: String,
-    val password: String,
+    val id: Int,
     val nombre: String,
-    val email: String
+    val apellido: String,
+    val correo: String,
+    val contrasena: String,
+    val role: String,
+    val fechaNacimiento: String? = null,
+    val direccion: String? = null
 )

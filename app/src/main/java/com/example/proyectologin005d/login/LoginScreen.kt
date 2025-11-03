@@ -14,26 +14,30 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.proyectologin005d.ui.login.LoginViewModel
+import com.example.proyectologin005d.data.repository.AuthRepository
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(
-    navController: NavController,
-    viewModel: LoginViewModel = viewModel()
+    navController: NavController
 ) {
-    val ui = viewModel.ui.collectAsState().value
-    val cs = MaterialTheme.colorScheme
-    val ty = MaterialTheme.typography
+    val context = LocalContext.current
+    val authRepository = remember { AuthRepository(context) }
+    var correo by remember { mutableStateOf("") }
+    var contrasena by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
 
     // Si ya hay sesión, salta a index
     LaunchedEffect(Unit) {
-        viewModel.checkSession { _ ->
+        val sessionUsername = authRepository.getSessionUsername()
+        if (sessionUsername != null) {
             navController.navigate("index") {
                 popUpTo("login") { inclusive = true }
             }
@@ -44,7 +48,7 @@ fun LoginScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(cs.background)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         Box(
             modifier = Modifier
@@ -52,7 +56,7 @@ fun LoginScreen(
                 .height(220.dp)
                 .background(
                     brush = Brush.verticalGradient(
-                        colors = listOf(cs.secondary, Color(0xFFFFD6E1))
+                        colors = listOf(MaterialTheme.colorScheme.secondary, Color(0xFFFFD6E1))
                     )
                 )
         )
@@ -63,7 +67,7 @@ fun LoginScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
                 .align(Alignment.Center),
-            colors = CardDefaults.cardColors(containerColor = cs.surface),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
             shape = RoundedCornerShape(24.dp)
         ) {
@@ -74,14 +78,14 @@ fun LoginScreen(
                 // Título estilo Pacifico
                 Text(
                     text = "Pastelería 1000 Sabores",
-                    style = ty.headlineLarge,
-                    color = cs.primary
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
                     text = "Celebra la dulzura de la vida",
-                    style = ty.bodySmall,
-                    color = cs.onSurface.copy(alpha = 0.7f),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center
                 )
 
@@ -89,8 +93,8 @@ fun LoginScreen(
 
                 // Email
                 OutlinedTextField(
-                    value = ui.username,
-                    onValueChange = viewModel::onUsernameChange,
+                    value = correo,
+                    onValueChange = { correo = it },
                     leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
                     label = { Text("Correo electrónico") },
                     singleLine = true,
@@ -104,8 +108,8 @@ fun LoginScreen(
                 var showPass by remember { mutableStateOf(false) }
 
                 OutlinedTextField(
-                    value = ui.password,
-                    onValueChange = viewModel::onPasswordChange,
+                    value = contrasena,
+                    onValueChange = { contrasena = it },
                     leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                     label = { Text("Contraseña") },
                     singleLine = true,
@@ -122,12 +126,12 @@ fun LoginScreen(
                     }
                 )
 
-                if (ui.error != null) {
+                if (error != null) {
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = ui.error ?: "",
+                        text = error ?: "",
                         color = MaterialTheme.colorScheme.error,
-                        style = ty.bodySmall
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
 
@@ -136,20 +140,24 @@ fun LoginScreen(
                 // Botón principal (Chocolate)
                 Button(
                     onClick = {
-                        viewModel.submit {
-                            navController.navigate("index") {
-                                popUpTo("login") { inclusive = true }
+                        scope.launch {
+                            val success = authRepository.login(correo, contrasena)
+                            if (success) {
+                                navController.navigate("index") {
+                                    popUpTo("login") { inclusive = true }
+                                }
+                            } else {
+                                error = "Usuario o contraseña incorrectos"
                             }
                         }
                     },
-                    enabled = !ui.isLoading,
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = cs.primary),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp)
                 ) {
-                    Text("Iniciar sesión", style = ty.titleMedium, color = cs.onPrimary)
+                    Text("Iniciar sesión", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimary)
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -163,17 +171,17 @@ fun LoginScreen(
                         .fillMaxWidth()
                         .height(50.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = cs.primary
+                        contentColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
-                    Text("Crear cuenta", style = ty.titleMedium)
+                    Text("Crear cuenta", style = MaterialTheme.typography.titleMedium)
                 }
 
                 Spacer(Modifier.height(8.dp))
                 Text(
                     "Registro con beneficios:\n• 50% 3ra edad (50+)\n• 10% de por vida con código FELICES50\n• Cumpleaños gratis con correo Duoc",
-                    style = ty.bodySmall,
-                    color = cs.onSurface.copy(alpha = 0.7f),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center
                 )
             }

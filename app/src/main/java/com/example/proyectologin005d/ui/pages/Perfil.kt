@@ -10,25 +10,32 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.proyectologin005d.R
-import com.example.proyectologin005d.ui.login.LoginViewModel
+import com.example.proyectologin005d.data.model.User
+import com.example.proyectologin005d.data.repository.AuthRepository
+import kotlinx.coroutines.launch
 
 @Composable
 fun PerfilScreen(
-    navController: NavController,
-    viewModel: LoginViewModel = viewModel()
+    navController: NavController
 ) {
     val cs = MaterialTheme.colorScheme
     val ty = MaterialTheme.typography
+    val context = LocalContext.current
+    val authRepository = remember { AuthRepository(context) }
+    var user by remember { mutableStateOf<User?>(null) }
 
-    // Leer los datos del usuario desde SharedPreferences
-    val username = remember { mutableStateOf(viewModel.getLoggedUserName() ?: "Usuario") }
-    val email = remember { mutableStateOf(viewModel.getLoggedUserEmail() ?: "correo@ejemplo.com") }
+    LaunchedEffect(Unit) {
+        val username = authRepository.getSessionUsername()
+        if (username != null) {
+            user = authRepository.getUserByUsername(username)
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -58,7 +65,7 @@ fun PerfilScreen(
 
             // Nombre de usuario
             Text(
-                text = username.value,
+                text = user?.nombre ?: "Usuario",
                 style = ty.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = cs.primary
@@ -66,7 +73,7 @@ fun PerfilScreen(
 
             // Correo electrónico
             Text(
-                text = email.value,
+                text = user?.correo ?: "correo@ejemplo.com",
                 style = ty.bodyMedium,
                 color = cs.onBackground.copy(alpha = 0.7f)
             )
@@ -93,12 +100,15 @@ fun PerfilScreen(
         }
 
         // Botón de cerrar sesión (abajo)
+        val scope = rememberCoroutineScope()
         Button(
             onClick = {
-                viewModel.logout()
-                navController.navigate("login") {
-                    popUpTo(0) { inclusive = true }
-                    launchSingleTop = true
+                scope.launch {
+                    authRepository.logout()
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                        launchSingleTop = true
+                    }
                 }
             },
             colors = ButtonDefaults.buttonColors(

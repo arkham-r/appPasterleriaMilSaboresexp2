@@ -1,14 +1,13 @@
 package com.example.proyectologin005d.navigation
 
-import android.net.Uri
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cake
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Mail
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBarItem
@@ -16,42 +15,40 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.proyectologin005d.data.repository.AuthRepository
 import com.example.proyectologin005d.login.LoginScreen
 import com.example.proyectologin005d.ui.login.RegisterScreen
 import com.example.proyectologin005d.ui.pages.CarritoScreen
 import com.example.proyectologin005d.ui.pages.ContactoScreen
 import com.example.proyectologin005d.ui.pages.IndexScreen
 import com.example.proyectologin005d.ui.pages.Nosotros
+import com.example.proyectologin005d.ui.pages.PaymentScreen
 import com.example.proyectologin005d.ui.pages.PerfilScreen
 import com.example.proyectologin005d.ui.pages.ProductosScreen
-import com.example.proyectologin005d.view.ProductoFormScreen
+import com.example.proyectologin005d.viewmodel.CartViewModel
 
 sealed class Screen(val route: String, val label: String, val icon: @Composable () -> Unit) {
     object Index     : Screen("index",       "Inicio",   { Icon(Icons.Default.Home,         null) })
     object Nosotros  : Screen("nosotros",    "Nosotros", { Icon(Icons.Default.Info,         null) })
     object Contacto  : Screen("contactanos", "Contacto", { Icon(Icons.Default.Mail,         null) })
-    object Productos : Screen("productos",   "Productos",{ Icon(Icons.Default.Star,         null) })
+    object Productos : Screen("productos",   "Productos",{ Icon(Icons.Default.Cake,         null) })
     object Carrito   : Screen("carrito",     "Carrito",  { Icon(Icons.Default.ShoppingCart, null) })
     object Perfil    : Screen("perfil",      "Perfil",   { Icon(Icons.Default.Person,       null) })
 }
 
 @Composable
-fun AppNav() {
-    val navController = rememberNavController()
-    val context = LocalContext.current
-    val authRepo = remember { AuthRepository(context) }
+fun AppNav(navController: NavHostController = rememberNavController()) {
+    val cartViewModel: CartViewModel = viewModel()
 
     val screens = listOf(
         Screen.Index, Screen.Nosotros, Screen.Contacto,
@@ -94,29 +91,21 @@ fun AppNav() {
         ) {
             // Auth
             composable("login") { LoginScreen(navController) }
-            composable("register") {
-                RegisterScreen(navController = navController, repo = authRepo)
-            }
+            composable("register") { RegisterScreen(navController) }
 
             // Contenido con BottomBar
             composable("index")       { IndexScreen(navController) }
             composable("nosotros")    { Nosotros() }
             composable("contactanos") { ContactoScreen() }
-            composable("productos")   { ProductosScreen() }
-            composable("carrito")     { CarritoScreen() }
+            composable("productos")   { ProductosScreen(cartViewModel) }
+            composable("carrito")     { CarritoScreen(cartViewModel, navController) }
             composable("perfil") { PerfilScreen(navController) }
-
-            // Pantalla con argumentos
             composable(
-                route = "ProductoFormScreen/{nombre}/{precio}",
-                arguments = listOf(
-                    navArgument("nombre") { type = NavType.StringType },
-                    navArgument("precio") { type = NavType.StringType }
-                )
-            ) { backStack ->
-                val nombre = Uri.encode(backStack.arguments?.getString("nombre") ?: "")
-                val precio = backStack.arguments?.getString("precio") ?: ""
-                ProductoFormScreen(nombre = nombre, precio = precio, navController = navController)
+                route = "payment/{total}",
+                arguments = listOf(navArgument("total") { type = NavType.IntType })
+            ) { backStackEntry ->
+                val total = backStackEntry.arguments?.getInt("total") ?: 0
+                PaymentScreen(navController, total)
             }
         }
     }
