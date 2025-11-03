@@ -1,8 +1,6 @@
 package com.example.proyectologin005d.ui.pages
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.repeatable
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -12,16 +10,75 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.proyectologin005d.R
+
+// Transformación para el número de tarjeta (#### #### #### ####)
+class CardNumberVisualTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val trimmed = if (text.text.length >= 16) text.text.substring(0..15) else text.text
+        var out = ""
+        for (i in trimmed.indices) {
+            out += trimmed[i]
+            if (i % 4 == 3 && i < 15) out += " "
+        }
+        val offsetTranslator = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int {
+                if (offset <= 3) return offset
+                if (offset <= 7) return offset + 1
+                if (offset <= 11) return offset + 2
+                if (offset <= 16) return offset + 3
+                return 19
+            }
+
+            override fun transformedToOriginal(offset: Int): Int {
+                if (offset <= 4) return offset
+                if (offset <= 9) return offset - 1
+                if (offset <= 14) return offset - 2
+                if (offset <= 19) return offset - 3
+                return 16
+            }
+        }
+        return TransformedText(AnnotatedString(out), offsetTranslator)
+    }
+}
+
+// Transformación para la fecha de expiración (MM/AA)
+class ExpiryDateVisualTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val trimmed = if (text.text.length >= 4) text.text.substring(0..3) else text.text
+        var out = ""
+        for (i in trimmed.indices) {
+            out += trimmed[i]
+            if (i == 1) out += "/"
+        }
+        val offsetTranslator = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int {
+                if (offset <= 1) return offset
+                if (offset <= 4) return offset + 1
+                return 5
+            }
+
+            override fun transformedToOriginal(offset: Int): Int {
+                if (offset <= 2) return offset
+                if (offset <= 5) return offset - 1
+                return 4
+            }
+        }
+        return TransformedText(AnnotatedString(out), offsetTranslator)
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,10 +95,8 @@ fun PaymentScreen(navController: NavController, total: Int) {
     var cvvError by remember { mutableStateOf<String?>(null) }
 
     val isFormValid by derivedStateOf {
-        cardName.isNotBlank() && cardNameError == null &&
-        cardNumber.isNotBlank() && cardNumberError == null &&
-        expiryDate.isNotBlank() && expiryDateError == null &&
-        cvv.isNotBlank() && cvvError == null
+        cardNameError == null && cardNumberError == null && expiryDateError == null && cvvError == null &&
+        cardName.isNotBlank() && cardNumber.isNotBlank() && expiryDate.isNotBlank() && cvv.isNotBlank()
     }
 
     fun validateCardName() {
@@ -50,7 +105,7 @@ fun PaymentScreen(navController: NavController, total: Int) {
 
     fun validateCardNumber() {
         cardNumberError = when {
-            cardNumber.isBlank() -> "El número de tarjeta no puede estar vacío"
+            cardNumber.isBlank() -> "El número no puede estar vacío"
             !cardNumber.all { it.isDigit() } -> "Debe contener solo números"
             cardNumber.length != 16 -> "Debe tener 16 dígitos"
             else -> null
@@ -58,10 +113,18 @@ fun PaymentScreen(navController: NavController, total: Int) {
     }
 
     fun validateExpiryDate() {
-        expiryDateError = if (!expiryDate.matches(Regex("^(0[1-9]|1[0-2])\\/([0-9]{2})$"))) {
-            "Formato MM/AA inválido"
-        } else {
-            null
+        expiryDateError = when {
+            expiryDate.isBlank() -> "La fecha no puede estar vacía"
+            expiryDate.length != 4 -> "Debe tener 4 dígitos (MMAA)"
+            !expiryDate.all { it.isDigit() } -> "Debe contener solo números"
+            else -> {
+                val month = expiryDate.substring(0, 2).toIntOrNull()
+                if (month == null || month !in 1..12) {
+                    "Mes inválido"
+                } else {
+                    null
+                }
+            }
         }
     }
 
@@ -81,7 +144,43 @@ fun PaymentScreen(navController: NavController, total: Int) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // ... (Credit Card Visual)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .graphicsLayer {
+                    rotationY = rotation
+                    cameraDistance = 8 * density
+                },
+            shape = RoundedCornerShape(8.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(Color(0xFF6F1E51), Color(0xFFED4C67), Color(0xFFF79F1F)),
+                        )
+                    )
+            ) {
+                Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                    if (rotation < 90f) {
+                        Image(painter = painterResource(id = R.drawable.logo), contentDescription = null, modifier = Modifier.height(40.dp))
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(text = CardNumberVisualTransformation().filter(AnnotatedString(cardNumber)).text.text, color = Color.White)
+                        Row {
+                            Text(text = cardName.ifEmpty { "NOMBRE APELLIDO" }, color = Color.White)
+                            Spacer(modifier = Modifier.weight(1f))
+                            Text(text = ExpiryDateVisualTransformation().filter(AnnotatedString(expiryDate)).text.text, color = Color.White)
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.height(40.dp))
+                        Text(text = "CVV: ${cvv.ifEmpty { "###" }}", modifier = Modifier.align(Alignment.End), color = Color.White)
+                    }
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -96,9 +195,15 @@ fun PaymentScreen(navController: NavController, total: Int) {
 
         OutlinedTextField(
             value = cardNumber,
-            onValueChange = { cardNumber = it; validateCardNumber() },
+            onValueChange = { 
+                if (it.length <= 16) {
+                    cardNumber = it.filter { char -> char.isDigit() }
+                    validateCardNumber()
+                }
+            },
             label = { Text("Número de tarjeta") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            visualTransformation = CardNumberVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
             isError = cardNumberError != null,
             supportingText = { if (cardNumberError != null) Text(cardNumberError!!) }
@@ -107,8 +212,15 @@ fun PaymentScreen(navController: NavController, total: Int) {
         Row(modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(
                 value = expiryDate,
-                onValueChange = { expiryDate = it; validateExpiryDate() },
+                onValueChange = { 
+                    if (it.length <= 4) {
+                        expiryDate = it.filter { char -> char.isDigit() }
+                        validateExpiryDate()
+                    }
+                },
                 label = { Text("Expira (MM/AA)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                visualTransformation = ExpiryDateVisualTransformation(),
                 modifier = Modifier.weight(1f),
                 isError = expiryDateError != null,
                 supportingText = { if (expiryDateError != null) Text(expiryDateError!!) }
@@ -116,7 +228,12 @@ fun PaymentScreen(navController: NavController, total: Int) {
             Spacer(modifier = Modifier.width(16.dp))
             OutlinedTextField(
                 value = cvv,
-                onValueChange = { cvv = it; validateCvv() },
+                onValueChange = { 
+                    if (it.length <= 4) {
+                        cvv = it.filter { char -> char.isDigit() }
+                        validateCvv()
+                    }
+                },
                 label = { Text("CVV") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.weight(1f).onFocusChanged { isCvvFocused = it.isFocused },

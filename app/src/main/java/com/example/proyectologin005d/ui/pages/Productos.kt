@@ -1,26 +1,29 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-
 package com.example.proyectologin005d.ui.pages
 
 import android.net.Uri
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.layout.ContentScale
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.proyectologin005d.data.local.CatalogoProductoJson
 import com.example.proyectologin005d.data.local.JsonReader
 import com.example.proyectologin005d.viewmodel.CartViewModel
+import kotlinx.coroutines.delay
 
 private fun assetUrlFromJsonPath(path: String?): String? {
     if (path.isNullOrBlank()) return null
@@ -29,6 +32,7 @@ private fun assetUrlFromJsonPath(path: String?): String? {
     return "file:///android_asset/img/${Uri.encode(cleaned)}"
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductosScreen(cartViewModel: CartViewModel = viewModel()) {
     val context = LocalContext.current
@@ -45,7 +49,8 @@ fun ProductosScreen(cartViewModel: CartViewModel = viewModel()) {
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
-        )
+        ),
+        label = ""
     )
 
     Scaffold(
@@ -56,7 +61,13 @@ fun ProductosScreen(cartViewModel: CartViewModel = viewModel()) {
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            items(productos) { p ->
+            items(productos, key = { it.id }) { p ->
+                var added by remember { mutableStateOf(false) }
+                val buttonColor by animateColorAsState(
+                    targetValue = if (added) Color(0xFFC8E6C9) else Color(0xFFFFD1DC),
+                    label = "buttonColor"
+                )
+
                 Card(Modifier.fillMaxWidth().padding(bottom = cardPadding)) {
                     Column(Modifier.padding(12.dp)) {
                         AsyncImage(
@@ -70,11 +81,31 @@ fun ProductosScreen(cartViewModel: CartViewModel = viewModel()) {
                         Text("Precio: CLP ${p.precio}")
                         Text("Categoría: ${p.categoria ?: "-"}")
                         Button(
-                            onClick = { cartViewModel.addToCart(p) },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFD1DC))
+                            onClick = {
+                                if (!added) {
+                                    cartViewModel.addToCart(p)
+                                    added = true
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = buttonColor)
                         ) {
-                           Text("Agregar al carrito", color = Color.Black)
+                            if (added) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Filled.Check, contentDescription = "Agregado")
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Agregado", color = Color.Black)
+                                }
+                            } else {
+                                Text("Agregar al carrito", color = Color.Black)
+                            }
                         }
+                    }
+                }
+
+                if (added) {
+                    LaunchedEffect(p.id, added) {
+                        delay(2000)
+                        added = false
                     }
                 }
             }
